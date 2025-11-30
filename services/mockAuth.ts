@@ -15,7 +15,7 @@ const saveUsers = (users: User[]) => {
 };
 
 export const authService = {
-  login: (username: string): User | null => {
+  login: (username: string, password: string = ''): User | null => {
     const users = getUsers();
     const user = users.find(u => u.username === username);
     if (user) {
@@ -25,7 +25,7 @@ export const authService = {
     return null;
   },
 
-  register: (username: string): User => {
+  register: (username: string, password: string = ''): User => {
     const users = getUsers();
     if (users.find(u => u.username === username)) {
       throw new Error('用户名已存在');
@@ -34,9 +34,11 @@ export const authService = {
     const newUser: User = {
       id: Math.random().toString(36).substr(2, 9),
       username,
+      password: password || '',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
       cart: [],
-      likes: []
+      likes: [],
+      purchaseHistory: []
     };
 
     users.push(newUser);

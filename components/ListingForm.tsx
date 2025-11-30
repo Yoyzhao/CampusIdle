@@ -1,45 +1,100 @@
-import React, { useState } from 'react';
-import { Sparkles, Upload, Loader2, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, CheckCircle } from 'lucide-react';
 import { Category, ItemType, Item } from '../types';
-import { generateItemDescription } from '../services/geminiService';
 
 interface ListingFormProps {
   onAddItem: (item: Omit<Item, 'id' | 'createdAt' | 'likes' | 'sellerName' | 'sellerId'>) => void;
   onCancel: () => void;
+  initialItem?: Item; // Optional prop for editing existing items
 }
 
-export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel }) => {
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<Category>(Category.OTHER);
-  const [type, setType] = useState<ItemType>(ItemType.SELL);
-  const [price, setPrice] = useState<number | ''>('');
-  const [description, setDescription] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel, initialItem }) => {
+  const [title, setTitle] = useState(initialItem?.title || '');
+  const [category, setCategory] = useState<Category>(initialItem?.category || Category.OTHER);
+  const [type, setType] = useState<ItemType>(initialItem?.type || ItemType.SELL);
+  const [price, setPrice] = useState<number | ''>(initialItem?.type === ItemType.SELL ? initialItem.price : '');
+  const [description, setDescription] = useState(initialItem?.description || '');
+  const [imageUrls, setImageUrls] = useState<string[]>(initialItem?.imageUrls || []);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleAIGenerate = async () => {
-    if (!title) {
-      alert("请先输入物品名称");
-      return;
+  // Reset form when initialItem changes
+  useEffect(() => {
+    if (initialItem) {
+      setTitle(initialItem.title);
+      setCategory(initialItem.category);
+      setType(initialItem.type);
+      setPrice(initialItem.type === ItemType.SELL ? initialItem.price : '');
+      setDescription(initialItem.description);
+      setImageUrls(initialItem.imageUrls);
     }
+  }, [initialItem]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImageUrls: string[] = [...imageUrls];
     
-    setIsGenerating(true);
-    const result = await generateItemDescription(title, category, type);
-    setDescription(result.description);
-    if (result.suggestedPrice > 0 && type === ItemType.SELL) {
-      setPrice(result.suggestedPrice);
+    // Process up to 3 files
+    for (let i = 0; i < files.length && newImageUrls.length < 3; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const base64Image = event.target.result as string;
+          setImageUrls(prev => [...prev, base64Image]);
+        }
+      };
+      
+      reader.readAsDataURL(file);
     }
-    setIsGenerating(false);
+  };
+
+  const removeImage = (index: number) => {
+    setImageUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (!files) return;
+
+    const newImageUrls: string[] = [...imageUrls];
+    
+    // Process up to 3 files
+    for (let i = 0; i < files.length && newImageUrls.length < 3; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const base64Image = event.target.result as string;
+          setImageUrls(prev => [...prev, base64Image]);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description) return;
     
-    // Generate a pseudo-random image based on category for demo
-    const width = 400;
-    const height = 300;
-    const seed = Math.floor(Math.random() * 1000);
-    const imageUrl = `https://picsum.photos/seed/${seed}/${width}/${height}`;
+    // If no images uploaded, use a default image
+    const finalImageUrls = imageUrls.length > 0 ? imageUrls : ['https://picsum.photos/seed/default/400/300'];
 
     onAddItem({
       title,
@@ -47,7 +102,7 @@ export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel })
       type,
       price: type === ItemType.SELL ? Number(price) : 0,
       description,
-      imageUrl
+      imageUrls: finalImageUrls
     });
   };
 
@@ -56,9 +111,11 @@ export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel })
       <div className="bg-brand-50 p-6 border-b border-brand-100">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <Upload className="w-6 h-6 mr-2 text-brand-600" />
-          发布闲置
+          {initialItem ? '编辑闲置' : '发布闲置'}
         </h2>
-        <p className="text-gray-500 text-sm mt-1">让你的闲置物品找到新主人</p>
+        <p className="text-gray-500 text-sm mt-1">
+          {initialItem ? '修改你的闲置物品信息' : '让你的闲置物品找到新主人'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -121,25 +178,9 @@ export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel })
           </div>
         )}
 
-        {/* Description & AI Button */}
+        {/* Description */}
         <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="block text-sm font-medium text-gray-700">描述</label>
-            <button
-              type="button"
-              onClick={handleAIGenerate}
-              disabled={isGenerating || !title}
-              className={`
-                flex items-center text-xs px-3 py-1 rounded-full transition-all
-                ${isGenerating 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}
-              `}
-            >
-              {isGenerating ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-              {isGenerating ? 'AI思考中...' : 'AI 帮我写'}
-            </button>
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -148,6 +189,58 @@ export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel })
             placeholder="描述物品的新旧程度、入手渠道等..."
             required
           />
+        </div>
+
+        {/* Image Upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">物品图片 (最多3张)</label>
+          <div 
+            className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${isDragging ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-brand-300'}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+              id="image-upload"
+            />
+            <label 
+              htmlFor="image-upload"
+              className="cursor-pointer flex flex-col items-center justify-center"
+            >
+              <Upload className="w-10 h-10 text-gray-400 mb-2" />
+              <p className="text-sm text-gray-600 mb-1">点击上传或拖拽图片到此处</p>
+              <p className="text-xs text-gray-400">支持 JPG、PNG 格式，最多3张</p>
+            </label>
+          </div>
+
+          {/* Image Previews */}
+          {imageUrls.length > 0 && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {imageUrls.map((url, index) => (
+                <div key={index} className="relative group">
+                  <img 
+                    src={url} 
+                    alt={`Preview ${index + 1}`} 
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -164,7 +257,7 @@ export const ListingForm: React.FC<ListingFormProps> = ({ onAddItem, onCancel })
             className="flex-1 px-4 py-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 font-bold shadow-md hover:shadow-lg transition-all flex justify-center items-center"
           >
             <CheckCircle className="w-5 h-5 mr-2" />
-            确认发布
+            {initialItem ? '确认修改' : '确认发布'}
           </button>
         </div>
       </form>

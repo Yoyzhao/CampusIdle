@@ -4,13 +4,14 @@ import { X, UserPlus, LogIn } from 'lucide-react';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (username: string) => void;
-  onRegister: (username: string) => void;
+  onLogin: (username: string, password: string) => void;
+  onRegister: (username: string, password: string) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegister }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
@@ -24,13 +25,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
       return;
     }
 
+    if (!password.trim()) {
+      setError('请输入密码');
+      return;
+    }
+
     try {
       if (isLogin) {
-        onLogin(username);
+        onLogin(username, password);
       } else {
-        onRegister(username);
+        onRegister(username, password);
       }
       setUsername('');
+      setPassword('');
     } catch (err: any) {
       setError(err.message || '操作失败');
     }
@@ -56,7 +63,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
             </div>
           )}
           
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               用户名 / 昵称
             </label>
@@ -67,6 +74,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none transition-all"
               placeholder="请输入你的校园昵称"
               autoFocus
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              密码
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none transition-all"
+              placeholder="请输入密码"
             />
           </div>
 

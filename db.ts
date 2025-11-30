@@ -1,16 +1,18 @@
 
 import Dexie, { Table } from 'dexie';
-import { User, Item, ItemType, Category } from './types';
+import { User, Item, ItemType, Category, ItemStatus } from './types';
 
 class CampusDatabase extends Dexie {
   users!: Table<User>;
   items!: Table<Item>;
+  sessions!: Table<{ id: string; userId: string; createdAt: number }>;
 
   constructor() {
     super('CampusIdleDB');
     this.version(1).stores({
       users: 'id, username',
-      items: 'id, type, category, sellerId, createdAt' 
+      items: 'id, type, category, sellerId, createdAt',
+      sessions: 'id, userId, createdAt' 
     });
   }
 }
@@ -27,11 +29,12 @@ db.on('populate', () => {
       type: ItemType.SELL,
       price: 15,
       description: '刚考完研，书保护得很好，只有前两章有少量笔记。希望能帮到下一届学弟学妹！',
-      imageUrl: 'https://picsum.photos/seed/book1/400/300',
+      imageUrls: ['https://picsum.photos/seed/book1/400/300'],
       sellerId: 'user_xueba',
       sellerName: '学霸小张',
       createdAt: Date.now(),
-      likes: 5
+      likes: 5,
+      status: ItemStatus.ACTIVE
     },
     {
       id: '2',
@@ -40,11 +43,12 @@ db.on('populate', () => {
       type: ItemType.SELL,
       price: 2800,
       description: '换Pro了所以出。无划痕，电池健康98%。送保护壳和类纸膜。',
-      imageUrl: 'https://picsum.photos/seed/ipad/400/300',
+      imageUrls: ['https://picsum.photos/seed/ipad/400/300', 'https://picsum.photos/seed/ipad2/400/300'],
       sellerId: 'user_digital',
       sellerName: '数码控',
       createdAt: Date.now(),
-      likes: 42
+      likes: 42,
+      status: ItemStatus.ACTIVE
     },
     {
       id: '3',
@@ -53,11 +57,12 @@ db.on('populate', () => {
       type: ItemType.TRADE,
       price: 0,
       description: '雅马哈F310，音色很暖。想学滑板了，有没有同学愿意交换？长板优先。',
-      imageUrl: 'https://picsum.photos/seed/guitar/400/300',
+      imageUrls: ['https://picsum.photos/seed/guitar/400/300', 'https://picsum.photos/seed/guitar2/400/300', 'https://picsum.photos/seed/guitar3/400/300'],
       sellerId: 'user_art',
       sellerName: '文艺青年',
       createdAt: Date.now(),
-      likes: 12
+      likes: 12,
+      status: ItemStatus.ACTIVE
     }
   ]);
 });
